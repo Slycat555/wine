@@ -133,24 +133,36 @@ GstElement *find_element(GstElementFactoryListType type, GstCaps *element_sink_c
     GstElement *element = NULL;
     GList *tmp, *transforms;
     const gchar *name;
+    int pass;
 
     if (!(transforms = find_element_factories(type, GST_RANK_MARGINAL, element_sink_caps, element_src_caps)))
         return NULL;
 
-    for (tmp = transforms; tmp != NULL && element == NULL; tmp = tmp->next)
+    /* The Proton media converter elements outrank the real decoders, but they only
+     * work under the Steam client with transcoded media available; elsewhere they fail
+     * at state change and the stream is silent or blank. Try real decoders first and
+     * only fall back to the media converter if none of them can be created.
+     */
+    for (pass = 0; pass < 2 && element == NULL; ++pass)
     {
-        name = gst_plugin_feature_get_name(GST_PLUGIN_FEATURE(tmp->data));
-
-        if (!strcmp(name, "vaapidecodebin"))
+        for (tmp = transforms; tmp != NULL && element == NULL; tmp = tmp->next)
         {
-            /* vaapidecodebin adds asynchronicity which breaks wg_transform synchronous drain / flush
-             * requirements. Ignore it and use VA-API decoders directly instead.
-             */
-            GST_WARNING("Ignoring vaapidecodebin decoder.");
-            continue;
-        }
+            name = gst_plugin_feature_get_name(GST_PLUGIN_FEATURE(tmp->data));
 
-        element = factory_create_element(GST_ELEMENT_FACTORY(tmp->data));
+            if (!strcmp(name, "vaapidecodebin"))
+            {
+                /* vaapidecodebin adds asynchronicity which breaks wg_transform synchronous drain / flush
+                 * requirements. Ignore it and use VA-API decoders directly instead.
+                 */
+                GST_WARNING("Ignoring vaapidecodebin decoder.");
+                continue;
+            }
+
+            if (g_str_has_prefix(name, "proton") != (pass == 1))
+                continue;
+
+            element = factory_create_element(GST_ELEMENT_FACTORY(tmp->data));
+        }
     }
 
     gst_plugin_feature_list_free(transforms);

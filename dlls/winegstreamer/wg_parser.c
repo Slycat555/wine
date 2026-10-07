@@ -577,9 +577,13 @@ static GstAutoplugSelectResult autoplug_select_cb(GstElement *bin, GstPad *pad,
         GST_WARNING("Disabled video acceleration since it breaks in wine.");
         return GST_AUTOPLUG_SELECT_SKIP;
     }
-    if (!strcmp(name, "Proton video converter") && !parser->use_mediaconv)
+    /* Skip all Proton media converter elements (video and audio) unless we are
+     * explicitly retrying with them; they outrank the real decoders but only work
+     * under the Steam client with transcoded media available.
+     */
+    if (g_str_has_prefix(name, "Proton ") && strstr(name, " converter") && !parser->use_mediaconv)
     {
-        GST_INFO("Skipping \"Proton video converter\".");
+        GST_INFO("Skipping \"%s\".", name);
         return GST_AUTOPLUG_SELECT_SKIP;
     }
 
