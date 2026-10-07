@@ -470,14 +470,32 @@ failed:
 
 static HRESULT WINAPI transform_GetInputCurrentType(IMFTransform *iface, DWORD id, IMFMediaType **type)
 {
-    FIXME("iface %p, id %lu, type %p stub!\n", iface, id, type);
-    return E_NOTIMPL;
+    struct wma_decoder *decoder = impl_from_IMFTransform(iface);
+
+    TRACE("iface %p, id %lu, type %p.\n", iface, id, type);
+
+    if (id)
+        return MF_E_INVALIDSTREAMNUMBER;
+    if (IsEqualGUID(&decoder->input_type.majortype, &GUID_NULL))
+        return MF_E_TRANSFORM_TYPE_NOT_SET;
+
+    return MFCreateMediaTypeFromRepresentation(AM_MEDIA_TYPE_REPRESENTATION,
+            (AM_MEDIA_TYPE *)&decoder->input_type, type);
 }
 
 static HRESULT WINAPI transform_GetOutputCurrentType(IMFTransform *iface, DWORD id, IMFMediaType **type)
 {
-    FIXME("iface %p, id %lu, type %p stub!\n", iface, id, type);
-    return E_NOTIMPL;
+    struct wma_decoder *decoder = impl_from_IMFTransform(iface);
+
+    TRACE("iface %p, id %lu, type %p.\n", iface, id, type);
+
+    if (id)
+        return MF_E_INVALIDSTREAMNUMBER;
+    if (IsEqualGUID(&decoder->output_type.majortype, &GUID_NULL))
+        return MF_E_TRANSFORM_TYPE_NOT_SET;
+
+    return MFCreateMediaTypeFromRepresentation(AM_MEDIA_TYPE_REPRESENTATION,
+            (AM_MEDIA_TYPE *)&decoder->output_type, type);
 }
 
 static HRESULT WINAPI transform_GetInputStatus(IMFTransform *iface, DWORD id, DWORD *flags)
